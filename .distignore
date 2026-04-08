@@ -1,0 +1,9 @@
+.github/
+.composer-cache
+.phpcs-cache.json
+vendor/
+node_modules/
+composer.lock
+phpcs.xml
+phpstan.neon
+.DS_Store
