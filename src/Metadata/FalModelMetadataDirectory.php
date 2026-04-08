@@ -21,6 +21,15 @@ use WordPress\AiClient\Providers\Models\Enums\OptionEnum;
 class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
 {
     /**
+     * Cached model metadata list.
+     *
+     * @since 1.0.0
+     *
+     * @var list<ModelMetadata>|null
+     */
+    private $cachedModels = null;
+
+    /**
      * Returns the curated list of fal.ai model metadata.
      *
      * @since 1.0.0
@@ -29,9 +38,13 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
      */
     public function listModelMetadata(): array
     {
+        if ($this->cachedModels !== null) {
+            return $this->cachedModels;
+        }
+
         $imageOptions = $this->getImageGenerationOptions();
 
-        return [
+        $this->cachedModels = [
             new ModelMetadata(
                 'flux-2-flex',
                 'Flux 2 Flex',
@@ -69,6 +82,8 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
                 $imageOptions
             ),
         ];
+
+        return $this->cachedModels;
     }
 
     /**
@@ -133,7 +148,13 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
             'nano-banana-pro' => 'fal-ai/nano-banana-pro/edit',
         ];
 
-        return $map[$modelId] ?? $modelId;
+        if (!isset($map[$modelId])) {
+            throw new \InvalidArgumentException(
+                sprintf('Unknown fal.ai model ID: "%s".', $modelId)
+            );
+        }
+
+        return $map[$modelId];
     }
 
     /**

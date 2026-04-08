@@ -240,15 +240,19 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
         string $responseUrl,
         $httpTransporter
     ): array {
+        $this->validateUrl($statusUrl);
+        $this->validateUrl($responseUrl);
+
         $startTime = time();
+        $maxTime = min(self::MAX_POLL_DURATION_SECONDS, $this->getMaxExecutionTime());
 
         while (true) {
             $elapsed = time() - $startTime;
-            if ($elapsed >= self::MAX_POLL_DURATION_SECONDS) {
+            if ($elapsed >= $maxTime) {
                 throw new \RuntimeException(
                     sprintf(
                         'fal.ai request timed out after %d seconds.',
-                        self::MAX_POLL_DURATION_SECONDS
+                        $elapsed
                     )
                 );
             }
@@ -283,7 +287,81 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
                 );
             }
 
-            sleep(self::POLL_INTERVAL_SECONDS);
+            usleep(self::POLL_INTERVAL_SECONDS * 1000000);
+        }
+    }
+
+    /**
+     * Returns the effective max execution time for polling.
+     *
+     * Accounts for PHP's max_execution_time and WordPress's time limits,
+     * leaving a buffer so the request can return an error rather than
+     * being killed mid-process.
+     *
+     * @since 1.0.0
+     *
+     * @return int The maximum polling duration in seconds.
+     */
+    protected function getMaxExecutionTime(): int
+    {
+        $phpLimit = (int) ini_get('max_execution_time');
+        if ($phpLimit > 0 && $phpLimit < self::MAX_POLL_DURATION_SECONDS) {
+            return max($phpLimit - 5, 10);
+        }
+
+        return self::MAX_POLL_DURATION_SECONDS;
+    }
+
+    /**
+     * Validates that a URL is a legitimate fal.ai API URL.
+     *
+     * Prevents SSRF by ensuring status and response URLs returned by the
+     * fal.ai queue API point to the expected fal.ai domain.
+     *
+     * @since 1.0.0
+     *
+     * @param string $url The URL to validate.
+     * @throws \InvalidArgumentException If the URL is not a valid fal.ai URL.
+     */
+    protected function validateUrl(string $url): void
+    {
+        $parsed = parse_url($url);
+        if ($parsed === false || !isset($parsed['host'])) {
+            throw new \InvalidArgumentException(
+                sprintf('Invalid URL: %s', $url)
+            );
+        }
+
+        $host = $parsed['host'];
+        $allowedHosts = [
+            'queue.fal.run',
+            'fal.run',
+            'api.fal.ai',
+            'fal.ai',
+            'v3.fal.media',
+            'v3b.fal.media',
+            'fal.media',
+        ];
+
+        $isValid = false;
+        foreach ($allowedHosts as $allowedHost) {
+            if ($host === $allowedHost || str_ends_with($host, '.' . $allowedHost)) {
+                $isValid = true;
+                break;
+            }
+        }
+
+        if (!$isValid) {
+            throw new \InvalidArgumentException(
+                sprintf('URL host "%s" is not a valid fal.ai domain.', $host)
+            );
+        }
+
+        $scheme = $parsed['scheme'] ?? '';
+        if ($scheme !== 'https') {
+            throw new \InvalidArgumentException(
+                sprintf('URL must use HTTPS: %s', $url)
+            );
         }
     }
 
@@ -365,6 +443,8 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
      */
     protected function downloadImageContent(string $url): string
     {
+        $this->validateUrl($url);
+
         $httpTransporter = $this->getHttpTransporter();
 
         $request = new Request(
