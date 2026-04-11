@@ -345,7 +345,8 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
 
         $isValid = false;
         foreach ($allowedHosts as $allowedHost) {
-            if ($host === $allowedHost || str_ends_with($host, '.' . $allowedHost)) {
+            $suffix = '.' . $allowedHost;
+            if ($host === $allowedHost || substr($host, -strlen($suffix)) === $suffix) {
                 $isValid = true;
                 break;
             }

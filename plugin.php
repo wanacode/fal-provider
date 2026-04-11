@@ -4,7 +4,7 @@
  * Plugin Name: AI Provider for fal.ai
  * Plugin URI: https://github.com/fal-ai/ai-provider-for-fal
  * Description: AI Provider for fal.ai for the WordPress AI Client.
- * Requires at least: 7.0
+ * Requires at least: 6.5
  * Requires PHP: 7.4
  * Version: 1.0.0
  * Author: fal.ai
