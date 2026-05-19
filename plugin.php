@@ -33,6 +33,56 @@ require_once __DIR__ . '/src/autoload.php';
 const PREFERRED_MODEL_OPTION = 'fal_preferred_image_model';
 const DEFAULT_PREFERRED_MODEL = 'flux-2-klein-9b';
 
+const PREFERRED_IMAGE_SIZE_OPTION = 'fal_preferred_image_size';
+const DEFAULT_PREFERRED_IMAGE_SIZE = '';
+
+/**
+ * Returns the supported fal.ai image_size enum values.
+ *
+ * Empty string means "auto" — fall back to the orientation/aspect ratio
+ * supplied by the AI plugin config.
+ *
+ * @since 1.0.0
+ *
+ * @return array<string, string> Map of value => human-readable label.
+ */
+function get_supported_image_sizes(): array
+{
+    return [
+        ''               => __('Auto', 'ai-provider-for-fal'),
+        'square_hd'      => __('Square HD', 'ai-provider-for-fal'),
+        'square'         => __('Square', 'ai-provider-for-fal'),
+        'portrait_4_3'   => __('Portrait 4:3', 'ai-provider-for-fal'),
+        'portrait_16_9'  => __('Portrait 16:9', 'ai-provider-for-fal'),
+        'landscape_4_3'  => __('Landscape 4:3', 'ai-provider-for-fal'),
+        'landscape_16_9' => __('Landscape 16:9', 'ai-provider-for-fal'),
+    ];
+}
+
+/**
+ * Returns the preferred fal.ai image_size value.
+ *
+ * Empty string means no preference (use orientation/aspect logic).
+ *
+ * @since 1.0.0
+ *
+ * @return string The image size enum value, or '' for auto.
+ */
+function get_preferred_image_size(): string
+{
+    $value = get_option(PREFERRED_IMAGE_SIZE_OPTION, DEFAULT_PREFERRED_IMAGE_SIZE);
+    if (!is_string($value)) {
+        return DEFAULT_PREFERRED_IMAGE_SIZE;
+    }
+
+    $supported = get_supported_image_sizes();
+    if (!array_key_exists($value, $supported)) {
+        return DEFAULT_PREFERRED_IMAGE_SIZE;
+    }
+
+    return $value;
+}
+
 /**
  * Registers the AI Provider for fal.ai with the AI Client.
  *
@@ -123,8 +173,10 @@ function render_model_picker(): void
     }
 
     $current = get_preferred_image_model();
+    $currentSize = get_preferred_image_size();
     $directory = new FalModelMetadataDirectory();
     $models = $directory->listModelMetadata();
+    $imageSizes = get_supported_image_sizes();
     ?>
     <div class="notice notice-info" style="display:flex;align-items:center;gap:10px;padding:10px;">
         <form id="fal-model-picker-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:flex;align-items:center;gap:10px;margin:0;">
@@ -135,6 +187,14 @@ function render_model_picker(): void
                 <?php foreach ($models as $model) : ?>
                     <option value="<?php echo esc_attr($model->getId()); ?>" <?php selected($model->getId(), $current); ?>>
                         <?php echo esc_html($model->getName()); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <label for="fal-preferred-image-size"><strong><?php esc_html_e('Image size:', 'ai-provider-for-fal'); ?></strong></label>
+            <select name="fal_image_size" id="fal-preferred-image-size" onchange="document.getElementById('fal-model-picker-form').submit();">
+                <?php foreach ($imageSizes as $value => $label) : ?>
+                    <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $currentSize); ?>>
+                        <?php echo esc_html($label); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -171,6 +231,14 @@ function handle_save_preferred_model(): void
     }
 
     update_option(PREFERRED_MODEL_OPTION, $model);
+
+    $imageSize = isset($_POST['fal_image_size']) ? sanitize_key(wp_unslash($_POST['fal_image_size'])) : '';
+    $supportedSizes = get_supported_image_sizes();
+    if (!array_key_exists($imageSize, $supportedSizes)) {
+        $imageSize = DEFAULT_PREFERRED_IMAGE_SIZE;
+    }
+
+    update_option(PREFERRED_IMAGE_SIZE_OPTION, $imageSize);
 
     wp_safe_redirect(
         add_query_arg('fal_model_updated', '1', admin_url('upload.php?page=generate-image'))

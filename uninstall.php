@@ -16,3 +16,6 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
     exit;
 }
 
+delete_option('fal_preferred_image_model');
+delete_option('fal_preferred_image_size');
+

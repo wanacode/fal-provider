@@ -129,11 +129,18 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
             $params['output_format'] = $this->mapMimeTypeToFormat($outputMimeType);
         }
 
-        $orientation = $config->getOutputMediaOrientation();
-        $aspectRatio = $config->getOutputMediaAspectRatio();
-        $imageSize = $this->prepareImageSizeParam($orientation, $aspectRatio);
-        if ($imageSize !== null) {
-            $params['image_size'] = $imageSize;
+        $preferredSize = function_exists('\\WordPress\\FalAiProvider\\get_preferred_image_size')
+            ? \WordPress\FalAiProvider\get_preferred_image_size()
+            : '';
+        if ($preferredSize !== '') {
+            $params['image_size'] = $preferredSize;
+        } else {
+            $orientation = $config->getOutputMediaOrientation();
+            $aspectRatio = $config->getOutputMediaAspectRatio();
+            $imageSize = $this->prepareImageSizeParam($orientation, $aspectRatio);
+            if ($imageSize !== null) {
+                $params['image_size'] = $imageSize;
+            }
         }
 
         $customOptions = $config->getCustomOptions();

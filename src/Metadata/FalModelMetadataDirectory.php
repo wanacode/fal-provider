@@ -87,6 +87,12 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
                 [CapabilityEnum::imageGeneration()],
                 $imageOptions
             ),
+            new ModelMetadata(
+                'recraft-v4-1-utility',
+                'Recraft V4.1 Utility',
+                [CapabilityEnum::imageGeneration()],
+                $imageOptions
+            ),
         ];
 
         return $this->cachedModels;
@@ -153,6 +159,7 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
             'nano-banana-2'   => 'fal-ai/nano-banana-2',
             'nano-banana-pro' => 'fal-ai/nano-banana-pro/edit',
             'flux-2-klein-9b' => 'fal-ai/flux-2/klein/9b',
+            'recraft-v4-1-utility' => 'fal-ai/recraft/v4.1/utility/text-to-image',
         ];
 
         if (!isset($map[$modelId])) {
