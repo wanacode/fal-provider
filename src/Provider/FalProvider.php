@@ -96,10 +96,15 @@ class FalProvider extends AbstractApiProvider
 
         if (version_compare(AiClient::VERSION, '1.2.0', '>=')) {
             if (function_exists('__')) {
-                $providerMetadataArgs[] = __('Image generation with Flux, Kling, and more.', 'ai-provider-for-fal');
+                $providerMetadataArgs[] = __('The world\'s best generative image, video, and audio models, all in one place.', 'ai-provider-for-fal');
             } else {
-                $providerMetadataArgs[] = 'Image generation with Flux, Kling, and more.';
+                $providerMetadataArgs[] = 'The world\'s best generative image, video, and audio models, all in one place.';
             }
+        }
+
+        // Provider logoPath support was added in 1.3.0.
+        if (version_compare(AiClient::VERSION, '1.3.0', '>=')) {
+            $providerMetadataArgs[] = dirname(__DIR__, 2) . '/assets/fal.jpg';
         }
 
         return new ProviderMetadata(...$providerMetadataArgs);
@@ -139,7 +144,7 @@ class FalProvider extends AbstractApiProvider
      * @param string $path The API path (typically a model endpoint ID).
      * @return string The full URL.
      */
-    public static function url(string $path): string
+    public static function url(string $path = ''): string
     {
         return self::BASE_URL . '/' . $path;
     }
