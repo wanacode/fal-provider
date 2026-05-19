@@ -105,6 +105,12 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
                 [CapabilityEnum::imageGeneration()],
                 $imageOptions
             ),
+            new ModelMetadata(
+                'hidream-o1-image',
+                'HiDream O1 Image',
+                [CapabilityEnum::imageGeneration()],
+                $imageOptions
+            ),
         ];
 
         return $this->cachedModels;
@@ -174,6 +180,7 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
             'recraft-v4-1-utility' => 'fal-ai/recraft/v4.1/utility/text-to-image',
             'z-image-turbo' => 'fal-ai/z-image/turbo',
             'z-image-base' => 'fal-ai/z-image/base',
+            'hidream-o1-image' => 'fal-ai/hidream-o1-image',
         ];
 
         if (!isset($map[$modelId])) {
