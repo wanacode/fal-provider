@@ -183,7 +183,7 @@ function render_model_picker(): void
             <?php wp_nonce_field('fal_save_preferred_model'); ?>
             <input type="hidden" name="action" value="fal_save_preferred_model">
             <label for="fal-preferred-model"><strong><?php esc_html_e('fal.ai model:', 'ai-provider-for-fal'); ?></strong></label>
-            <select name="fal_model" id="fal-preferred-model" onchange="document.getElementById('fal-model-picker-form').submit();">
+            <select name="fal_model" id="fal-preferred-model" onchange="window.falSavePicker && window.falSavePicker();">
                 <?php foreach ($models as $model) : ?>
                     <option value="<?php echo esc_attr($model->getId()); ?>" <?php selected($model->getId(), $current); ?>>
                         <?php echo esc_html($model->getName()); ?>
@@ -191,18 +191,60 @@ function render_model_picker(): void
                 <?php endforeach; ?>
             </select>
             <label for="fal-preferred-image-size"><strong><?php esc_html_e('Image size:', 'ai-provider-for-fal'); ?></strong></label>
-            <select name="fal_image_size" id="fal-preferred-image-size" onchange="document.getElementById('fal-model-picker-form').submit();">
+            <select name="fal_image_size" id="fal-preferred-image-size" onchange="window.falSavePicker && window.falSavePicker();">
                 <?php foreach ($imageSizes as $value => $label) : ?>
                     <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $currentSize); ?>>
                         <?php echo esc_html($label); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
+            <span id="fal-model-picker-status" aria-live="polite" style="color:#646970;font-style:italic;"></span>
             <noscript>
                 <button type="submit" class="button button-primary"><?php esc_html_e('Save', 'ai-provider-for-fal'); ?></button>
             </noscript>
         </form>
     </div>
+    <script>
+    (function () {
+        var form = document.getElementById('fal-model-picker-form');
+        if (!form) {
+            return;
+        }
+        var status = document.getElementById('fal-model-picker-status');
+        var timer = null;
+        window.falSavePicker = function () {
+            if (status) {
+                status.textContent = <?php echo wp_json_encode(__('Saving…', 'ai-provider-for-fal')); ?>;
+            }
+            var data = new FormData(form);
+            fetch(<?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: data
+            }).then(function (r) {
+                return r.json().catch(function () { return { success: r.ok }; });
+            }).then(function (json) {
+                if (status) {
+                    status.textContent = (json && json.success)
+                        ? <?php echo wp_json_encode(__('Saved.', 'ai-provider-for-fal')); ?>
+                        : <?php echo wp_json_encode(__('Save failed.', 'ai-provider-for-fal')); ?>;
+                    if (timer) {
+                        clearTimeout(timer);
+                    }
+                    timer = setTimeout(function () { status.textContent = ''; }, 2000);
+                }
+            }).catch(function () {
+                if (status) {
+                    status.textContent = <?php echo wp_json_encode(__('Save failed.', 'ai-provider-for-fal')); ?>;
+                }
+            });
+        };
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            window.falSavePicker();
+        });
+    })();
+    </script>
     <?php
 }
 
@@ -217,7 +259,12 @@ add_action('admin_notices', __NAMESPACE__ . '\\render_model_picker');
  */
 function handle_save_preferred_model(): void
 {
+    $isAjax = wp_doing_ajax();
+
     if (!current_user_can('manage_options')) {
+        if ($isAjax) {
+            wp_send_json_error(['message' => __('Forbidden.', 'ai-provider-for-fal')], 403);
+        }
         wp_die(esc_html__('You do not have permission to do this.', 'ai-provider-for-fal'));
     }
 
@@ -240,6 +287,13 @@ function handle_save_preferred_model(): void
 
     update_option(PREFERRED_IMAGE_SIZE_OPTION, $imageSize);
 
+    if ($isAjax) {
+        wp_send_json_success([
+            'model'      => $model,
+            'image_size' => $imageSize,
+        ]);
+    }
+
     wp_safe_redirect(
         add_query_arg('fal_model_updated', '1', admin_url('upload.php?page=generate-image'))
     );
@@ -247,3 +301,4 @@ function handle_save_preferred_model(): void
 }
 
 add_action('admin_post_fal_save_preferred_model', __NAMESPACE__ . '\\handle_save_preferred_model');
+add_action('wp_ajax_fal_save_preferred_model', __NAMESPACE__ . '\\handle_save_preferred_model');
