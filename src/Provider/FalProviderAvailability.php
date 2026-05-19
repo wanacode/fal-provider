@@ -8,10 +8,12 @@ use Exception;
 use WordPress\AiClient\Providers\Contracts\ProviderAvailabilityInterface;
 use WordPress\AiClient\Providers\Http\Contracts\WithHttpTransporterInterface;
 use WordPress\AiClient\Providers\Http\Contracts\WithRequestAuthenticationInterface;
+use WordPress\AiClient\Providers\Http\DTO\ApiKeyRequestAuthentication;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum;
 use WordPress\AiClient\Providers\Http\Traits\WithHttpTransporterTrait;
 use WordPress\AiClient\Providers\Http\Traits\WithRequestAuthenticationTrait;
+use WordPress\FalAiProvider\Authentication\FalApiKeyRequestAuthentication;
 
 /**
  * Checks whether the fal.ai provider is configured with a valid API key.
@@ -43,8 +45,16 @@ class FalProviderAvailability implements
     public function isConfigured(): bool
     {
         try {
+            $auth = $this->getRequestAuthentication();
+            if (
+                $auth instanceof ApiKeyRequestAuthentication
+                && !$auth instanceof FalApiKeyRequestAuthentication
+            ) {
+                $auth = new FalApiKeyRequestAuthentication($auth->getApiKey());
+            }
+
             $request = new Request(HttpMethodEnum::GET(), self::TEST_URL);
-            $request = $this->getRequestAuthentication()->authenticateRequest($request);
+            $request = $auth->authenticateRequest($request);
             $response = $this->getHttpTransporter()->send($request);
 
             $status = $response->getStatusCode();

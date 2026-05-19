@@ -11,6 +11,8 @@ use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiBasedModel;
+use WordPress\AiClient\Providers\Http\Contracts\RequestAuthenticationInterface;
+use WordPress\AiClient\Providers\Http\DTO\ApiKeyRequestAuthentication;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum;
 use WordPress\AiClient\Providers\Http\Exception\ResponseException;
@@ -20,6 +22,7 @@ use WordPress\AiClient\Results\DTO\Candidate;
 use WordPress\AiClient\Results\DTO\GenerativeAiResult;
 use WordPress\AiClient\Results\DTO\TokenUsage;
 use WordPress\AiClient\Results\Enums\FinishReasonEnum;
+use WordPress\FalAiProvider\Authentication\FalApiKeyRequestAuthentication;
 use WordPress\FalAiProvider\Metadata\FalModelMetadataDirectory;
 use WordPress\FalAiProvider\Provider\FalProvider;
 
@@ -39,6 +42,27 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
 {
     private const POLL_INTERVAL_SECONDS = 2;
     private const MAX_POLL_DURATION_SECONDS = 180;
+
+    /**
+     * {@inheritDoc}
+     *
+     * fal.ai uses "Authorization: Key <key>" instead of "Bearer <key>", so we
+     * wrap the framework-injected ApiKeyRequestAuthentication in our custom
+     * class. Matches the pattern used by ai-provider-for-google.
+     *
+     * @since 1.0.0
+     */
+    public function getRequestAuthentication(): RequestAuthenticationInterface
+    {
+        $requestAuthentication = parent::getRequestAuthentication();
+        if (!$requestAuthentication instanceof ApiKeyRequestAuthentication) {
+            return $requestAuthentication;
+        }
+        if ($requestAuthentication instanceof FalApiKeyRequestAuthentication) {
+            return $requestAuthentication;
+        }
+        return new FalApiKeyRequestAuthentication($requestAuthentication->getApiKey());
+    }
 
     /**
      * {@inheritDoc}
@@ -427,10 +451,10 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
             $base64 = base64_encode($imageContent);
             $dataUri = 'data:' . $contentType . ';base64,' . $base64;
 
-            return File::fromDataUri($dataUri);
+            return new File($dataUri);
         }
 
-        return File::fromUrl($url, $contentType);
+        return new File($url, $contentType);
     }
 
     /**
