@@ -88,8 +88,8 @@ function get_supported_image_sizes(): array
         ''               => __('Auto', 'ai-provider-for-fal'),
         'square_hd'      => __('Square HD', 'ai-provider-for-fal'),
         'square'         => __('Square', 'ai-provider-for-fal'),
-        'portrait_4_3'   => __('Portrait 4:3', 'ai-provider-for-fal'),
-        'portrait_16_9'  => __('Portrait 16:9', 'ai-provider-for-fal'),
+        'portrait_4_3'   => __('Portrait 3:4', 'ai-provider-for-fal'),
+        'portrait_16_9'  => __('Portrait 9:16', 'ai-provider-for-fal'),
         'landscape_4_3'  => __('Landscape 4:3', 'ai-provider-for-fal'),
         'landscape_16_9' => __('Landscape 16:9', 'ai-provider-for-fal'),
     ];
@@ -213,6 +213,9 @@ function render_model_picker(): void
     $currentRenderingSpeed = get_preferred_ideogram_rendering_speed();
     $directory = new FalModelMetadataDirectory();
     $models = $directory->listModelMetadata();
+    usort($models, static function ($a, $b) {
+        return strcasecmp($a->getName(), $b->getName());
+    });
     $imageSizes = get_supported_image_sizes();
     $renderingSpeeds = get_ideogram_rendering_speeds();
     ?>
