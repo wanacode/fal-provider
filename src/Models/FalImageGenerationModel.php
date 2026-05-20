@@ -143,6 +143,13 @@ class FalImageGenerationModel extends AbstractApiBasedModel implements ImageGene
             }
         }
 
+        if (
+            $this->metadata()->getId() === 'ideogram-v3'
+            && function_exists('\\WordPress\\FalAiProvider\\get_preferred_ideogram_rendering_speed')
+        ) {
+            $params['rendering_speed'] = \WordPress\FalAiProvider\get_preferred_ideogram_rendering_speed();
+        }
+
         $customOptions = $config->getCustomOptions();
         foreach ($customOptions as $key => $value) {
             if (!isset($params[$key])) {

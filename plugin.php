@@ -36,6 +36,42 @@ const DEFAULT_PREFERRED_MODEL = 'flux-2-klein-9b';
 const PREFERRED_IMAGE_SIZE_OPTION = 'fal_preferred_image_size';
 const DEFAULT_PREFERRED_IMAGE_SIZE = '';
 
+const IDEOGRAM_RENDERING_SPEED_OPTION = 'fal_ideogram_rendering_speed';
+const DEFAULT_IDEOGRAM_RENDERING_SPEED = 'BALANCED';
+
+/**
+ * Returns the supported Ideogram V3 rendering speeds.
+ *
+ * @since 1.1.0
+ *
+ * @return array<string, string> Map of value => human-readable label.
+ */
+function get_ideogram_rendering_speeds(): array
+{
+    return [
+        'TURBO'    => __('Turbo (fastest, $0.03)', 'ai-provider-for-fal'),
+        'BALANCED' => __('Balanced ($0.06)', 'ai-provider-for-fal'),
+        'QUALITY'  => __('Quality (best, $0.09)', 'ai-provider-for-fal'),
+    ];
+}
+
+/**
+ * Returns the preferred Ideogram V3 rendering speed.
+ *
+ * @since 1.1.0
+ *
+ * @return string The rendering speed value.
+ */
+function get_preferred_ideogram_rendering_speed(): string
+{
+    $value = get_option(IDEOGRAM_RENDERING_SPEED_OPTION, DEFAULT_IDEOGRAM_RENDERING_SPEED);
+    if (!is_string($value) || !array_key_exists($value, get_ideogram_rendering_speeds())) {
+        return DEFAULT_IDEOGRAM_RENDERING_SPEED;
+    }
+
+    return $value;
+}
+
 /**
  * Returns the supported fal.ai image_size enum values.
  *
@@ -174,9 +210,11 @@ function render_model_picker(): void
 
     $current = get_preferred_image_model();
     $currentSize = get_preferred_image_size();
+    $currentRenderingSpeed = get_preferred_ideogram_rendering_speed();
     $directory = new FalModelMetadataDirectory();
     $models = $directory->listModelMetadata();
     $imageSizes = get_supported_image_sizes();
+    $renderingSpeeds = get_ideogram_rendering_speeds();
     ?>
     <div class="notice notice-info" style="display:flex;align-items:center;gap:10px;padding:10px;">
         <form id="fal-model-picker-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:flex;align-items:center;gap:10px;margin:0;">
@@ -198,6 +236,16 @@ function render_model_picker(): void
                     </option>
                 <?php endforeach; ?>
             </select>
+            <span id="fal-ideogram-rendering-speed-wrap" style="display:<?php echo $current === 'ideogram-v3' ? 'inline-flex' : 'none'; ?>;align-items:center;gap:10px;">
+                <label for="fal-ideogram-rendering-speed"><strong><?php esc_html_e('Rendering speed:', 'ai-provider-for-fal'); ?></strong></label>
+                <select name="fal_ideogram_rendering_speed" id="fal-ideogram-rendering-speed" onchange="window.falSavePicker && window.falSavePicker();">
+                    <?php foreach ($renderingSpeeds as $value => $label) : ?>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $currentRenderingSpeed); ?>>
+                            <?php echo esc_html($label); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </span>
             <span id="fal-model-picker-status" aria-live="polite" style="color:#646970;font-style:italic;"></span>
             <noscript>
                 <button type="submit" class="button button-primary"><?php esc_html_e('Save', 'ai-provider-for-fal'); ?></button>
@@ -211,7 +259,17 @@ function render_model_picker(): void
             return;
         }
         var status = document.getElementById('fal-model-picker-status');
+        var modelSelect = document.getElementById('fal-preferred-model');
+        var renderingWrap = document.getElementById('fal-ideogram-rendering-speed-wrap');
         var timer = null;
+        function toggleModelOptions() {
+            if (renderingWrap && modelSelect) {
+                renderingWrap.style.display = (modelSelect.value === 'ideogram-v3') ? 'inline-flex' : 'none';
+            }
+        }
+        if (modelSelect) {
+            modelSelect.addEventListener('change', toggleModelOptions);
+        }
         window.falSavePicker = function () {
             if (status) {
                 status.textContent = <?php echo wp_json_encode(__('Saving…', 'ai-provider-for-fal')); ?>;
@@ -287,10 +345,20 @@ function handle_save_preferred_model(): void
 
     update_option(PREFERRED_IMAGE_SIZE_OPTION, $imageSize);
 
+    $renderingSpeed = isset($_POST['fal_ideogram_rendering_speed'])
+        ? strtoupper(sanitize_key(wp_unslash($_POST['fal_ideogram_rendering_speed'])))
+        : '';
+    if (!array_key_exists($renderingSpeed, get_ideogram_rendering_speeds())) {
+        $renderingSpeed = DEFAULT_IDEOGRAM_RENDERING_SPEED;
+    }
+
+    update_option(IDEOGRAM_RENDERING_SPEED_OPTION, $renderingSpeed);
+
     if ($isAjax) {
         wp_send_json_success([
-            'model'      => $model,
-            'image_size' => $imageSize,
+            'model'            => $model,
+            'image_size'       => $imageSize,
+            'rendering_speed'  => $renderingSpeed,
         ]);
     }
 

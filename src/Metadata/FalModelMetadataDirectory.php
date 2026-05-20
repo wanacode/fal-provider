@@ -111,6 +111,12 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
                 [CapabilityEnum::imageGeneration()],
                 $imageOptions
             ),
+            new ModelMetadata(
+                'ideogram-v3',
+                'Ideogram V3',
+                [CapabilityEnum::imageGeneration()],
+                $imageOptions
+            ),
         ];
 
         return $this->cachedModels;
@@ -181,6 +187,7 @@ class FalModelMetadataDirectory implements ModelMetadataDirectoryInterface
             'z-image-turbo' => 'fal-ai/z-image/turbo',
             'z-image-base' => 'fal-ai/z-image/base',
             'hidream-o1-image' => 'fal-ai/hidream-o1-image',
+            'ideogram-v3' => 'fal-ai/ideogram/v3',
         ];
 
         if (!isset($map[$modelId])) {
